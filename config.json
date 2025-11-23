@@ -1,0 +1,19 @@
+{
+  "time": {
+    "study_duration": 90,
+    "wrapup_time": 80,
+    "rest_duration": 20,
+    "micro_break_interval_min": 5,
+    "micro_break_interval_max": 8,
+    "micro_break_duration": 10
+  },
+  "sounds": {
+    "micro_break": "C:/Windows/Media/Alarm02.wav",
+    "wrapup": "C:/Windows/Media/Alarm03.wav",
+    "session_end": "C:/Windows/Media/Alarm05.wav",
+    "rest_end": "C:/Windows/Media/Ring03.wav"
+  },
+  "ui": {
+    "theme": "light"
+  }
+}

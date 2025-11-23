@@ -1,0 +1,21 @@
+# 虚拟环境
+.venv/
+venv/
+
+# PyInstaller 打包生成的文件夹和 spec
+build/
+dist/
+*.spec
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 数据库文件（运行时生成）
+study_stats.db
+
+
+# 编辑器设置（看你用不用）
+.vscode/
+.idea/
