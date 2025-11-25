@@ -13,9 +13,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFileDialog,
     QWidget,
+    QComboBox,
 )
 
-from config_manager import ConfigManager, TimeConfig, SoundConfig
+from config_manager import ConfigManager, TimeConfig, SoundConfig, UIConfig
 
 
 class SettingsDialog(QDialog):
@@ -71,6 +72,12 @@ class SettingsDialog(QDialog):
         layout.addRow("学习结束提示音：", self._wrap_with_button(self.edit_session_end_sound, btn_session_end))
         layout.addRow("休息结束提示音：", self._wrap_with_button(self.edit_rest_end_sound, btn_rest_end))
 
+        # 主题选择
+        self.combo_theme = QComboBox()
+        self.combo_theme.addItem("浅色主题", "light")
+        self.combo_theme.addItem("深色主题", "dark")
+        layout.addRow("主题选择：", self.combo_theme)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -125,6 +132,7 @@ class SettingsDialog(QDialog):
     def _load_from_config(self):
         time_cfg = self.config_manager.get_time_config()
         sound_cfg = self.config_manager.get_sound_config()
+        ui_cfg = self.config_manager.get_ui_config()
 
         self.spin_study.setValue(time_cfg.study_duration)
         self.spin_wrapup.setValue(time_cfg.wrapup_time)
@@ -137,6 +145,12 @@ class SettingsDialog(QDialog):
         self.edit_wrapup_sound.setText(sound_cfg.wrapup)
         self.edit_session_end_sound.setText(sound_cfg.session_end)
         self.edit_rest_end_sound.setText(sound_cfg.rest_end)
+
+        # 主题下拉框与配置同步
+        idx = self.combo_theme.findData(ui_cfg.theme)
+        if idx < 0:
+            idx = 0
+        self.combo_theme.setCurrentIndex(idx)
 
     def accept(self):
         time_cfg = TimeConfig(
@@ -155,6 +169,11 @@ class SettingsDialog(QDialog):
             rest_end=self.edit_rest_end_sound.text(),
         )
 
+        ui_cfg = UIConfig(
+            theme=self.combo_theme.currentData() or "light"
+        )
+
         self.config_manager.update_time_config(time_cfg)
         self.config_manager.update_sound_config(sound_cfg)
+        self.config_manager.update_ui_config(ui_cfg)
         super().accept()

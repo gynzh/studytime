@@ -102,32 +102,64 @@ class MainWindow(QMainWindow):
         self._update_window_size_for_text(self.label_time.text())
 
     def _apply_theme(self) -> None:
-        """紧凑蓝色胶囊样式"""
-        self.setStyleSheet(
-            """
-            QMainWindow {
-                background-color: transparent;
-            }
+        """根据配置中的 ui.theme 应用浅色/深色主题"""
+        ui_cfg = self.config_manager.get_ui_config()
+        theme = getattr(ui_cfg, "theme", "light")
 
-            QWidget#TimerBar {
-                background: qlineargradient(
-                    x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0   #0f172a,
-                    stop: 0.25 #1d4ed8,
-                    stop: 0.6 #2563eb,
-                    stop: 1   #38bdf8
-                );
-                border-radius: 12px;
-                border: 1px solid #60a5fa;
-            }
+        if theme == "dark":
+            # 深色胶囊样式
+            self.setStyleSheet(
+                """
+                QMainWindow {
+                    background-color: transparent;
+                }
 
-            QLabel#TimeLabel {
-                color: white;
-                font-weight: 600;
-                letter-spacing: 1px;
-            }
-            """
-        )
+                QWidget#TimerBar {
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 1, y2: 0,
+                        stop: 0   #020617,
+                        stop: 0.35 #0f172a,
+                        stop: 0.7 #1f2937,
+                        stop: 1   #1d4ed8
+                    );
+                    border-radius: 12px;
+                    border: 1px solid #1d4ed8;
+                }
+
+                QLabel#TimeLabel {
+                    color: #e5e7eb;
+                    font-weight: 600;
+                    letter-spacing: 1px;
+                }
+                """
+            )
+        else:
+            # 默认浅色蓝色胶囊样式
+            self.setStyleSheet(
+                """
+                QMainWindow {
+                    background-color: transparent;
+                }
+
+                QWidget#TimerBar {
+                    background: qlineargradient(
+                        x1: 0, y1: 0, x2: 1, y2: 0,
+                        stop: 0   #0f172a,
+                        stop: 0.25 #1d4ed8,
+                        stop: 0.6 #2563eb,
+                        stop: 1   #38bdf8
+                    );
+                    border-radius: 12px;
+                    border: 1px solid #60a5fa;
+                }
+
+                QLabel#TimeLabel {
+                    color: white;
+                    font-weight: 600;
+                    letter-spacing: 1px;
+                }
+                """
+            )
 
     def _update_window_size_for_text(self, text: str) -> None:
         """
@@ -286,9 +318,27 @@ class MainWindow(QMainWindow):
                 self.config_manager.get_sound_config()
             )
 
+            # 更新主窗口主题
+            self._apply_theme()
+
+            # 如果统计窗口已经打开, 同步切换其主题
+            if self.stats_window is not None:
+                ui_cfg = self.config_manager.get_ui_config()
+                style_mode = ui_cfg.theme if ui_cfg.theme in ("light", "dark") else "light"
+                self.stats_window.style_mode = style_mode
+                # _apply_style / update_view 虽为内部方法, 这里直接调用以实现实时刷新
+                self.stats_window._apply_style(style_mode)
+                self.stats_window.update_view()
+
     def open_stats(self) -> None:
         if self.stats_window is None:
-            self.stats_window = StatsWindow(self.stats_manager, self)
+            ui_cfg = self.config_manager.get_ui_config()
+            style_mode = ui_cfg.theme if ui_cfg.theme in ("light", "dark") else "light"
+            self.stats_window = StatsWindow(
+                self.stats_manager,
+                style_mode=style_mode,
+                parent=self,
+            )
         self.stats_window.show()
         self.stats_window.raise_()
         self.stats_window.activateWindow()

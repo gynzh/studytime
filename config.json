@@ -8,12 +8,12 @@
     "micro_break_duration": 10
   },
   "sounds": {
-    "micro_break": "C:/Windows/Media/Alarm02.wav",
-    "wrapup": "C:/Windows/Media/Alarm03.wav",
-    "session_end": "C:/Windows/Media/Alarm05.wav",
-    "rest_end": "C:/Windows/Media/Ring03.wav"
+    "micro_break": "",
+    "wrapup": "",
+    "session_end": "",
+    "rest_end": ""
   },
   "ui": {
-    "theme": "light"
+    "theme": "dark"
   }
 }
