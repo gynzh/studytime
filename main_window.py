@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QFont, QScreen, QMouseEvent
+from PySide6.QtGui import QFont, QScreen, QMouseEvent, QIcon, QPixmap, QPainter, QBrush, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QVBoxLayout,
     QWidget,
+    QSystemTrayIcon,
 )
 
 from config_manager import ConfigManager
@@ -59,9 +60,152 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._update_state_ui(self.timer_controller.state)
 
+        # 初始化系统托盘图标
+        self._init_tray_icon()
+
         # 窗口显示后定位到右上角
         QApplication.instance().processEvents()
         self._position_window_top_right()
+
+    def _create_tray_icon_pixmap(self) -> QPixmap:
+        """创建一个蓝色圆形托盘图标"""
+        size = 64
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # 绘制蓝色渐变圆形
+        gradient_center = QPoint(size // 2, size // 2)
+        painter.setBrush(QBrush(QColor("#3b82f6")))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(4, 4, size - 8, size - 8)
+
+        # 绘制一个简单的时钟图案
+        painter.setPen(QColor("#ffffff"))
+        painter.setBrush(QBrush(QColor("#ffffff")))
+        center = size // 2
+        # 时钟中心点
+        painter.drawEllipse(center - 3, center - 3, 6, 6)
+        # 时针
+        painter.drawLine(center, center, center, center - 14)
+        # 分针
+        painter.drawLine(center, center, center + 10, center - 8)
+
+        painter.end()
+        return pixmap
+
+    def _init_tray_icon(self) -> None:
+        """初始化系统托盘图标"""
+        self.tray_icon = QSystemTrayIcon(self)
+
+        # 创建托盘图标
+        icon_pixmap = self._create_tray_icon_pixmap()
+        self.tray_icon.setIcon(QIcon(icon_pixmap))
+        self.tray_icon.setToolTip("学习计时器 - 单击显示窗口")
+
+        # 创建托盘菜单
+        tray_menu = QMenu()
+
+        action_show = tray_menu.addAction("显示窗口")
+        action_show.triggered.connect(self._bring_window_to_front)
+
+        action_reset_pos = tray_menu.addAction("重置窗口位置")
+        action_reset_pos.triggered.connect(self._reset_window_position)
+
+        tray_menu.addSeparator()
+
+        action_start = tray_menu.addAction("开始")
+        action_start.triggered.connect(self._on_start_triggered)
+
+        action_pause = tray_menu.addAction("暂停/继续")
+        action_pause.triggered.connect(self._on_pause_triggered)
+
+        action_stop = tray_menu.addAction("结束本轮")
+        action_stop.triggered.connect(self._on_stop_triggered)
+
+        tray_menu.addSeparator()
+
+        action_settings = tray_menu.addAction("首选项...")
+        action_settings.triggered.connect(self.open_settings)
+
+        action_stats = tray_menu.addAction("查看统计")
+        action_stats.triggered.connect(self.open_stats)
+
+        tray_menu.addSeparator()
+
+        action_quit = tray_menu.addAction("退出程序")
+        action_quit.triggered.connect(self._quit_application)
+
+        self.tray_icon.setContextMenu(tray_menu)
+
+        # 单击托盘图标显示窗口
+        self.tray_icon.activated.connect(self._on_tray_activated)
+
+        self.tray_icon.show()
+
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        """托盘图标被激活时的处理"""
+        if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick):
+            self._bring_window_to_front()
+
+    def _bring_window_to_front(self) -> None:
+        """将窗口带到前台并确保可见"""
+        # 确保窗口在屏幕可见范围内
+        self._ensure_window_visible()
+
+        # 显示窗口
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _reset_window_position(self) -> None:
+        """重置窗口到默认位置（右上角）"""
+        self._position_window_top_right()
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _ensure_window_visible(self) -> None:
+        """确保窗口至少有一部分在屏幕可见范围内"""
+        screen: QScreen = QApplication.primaryScreen()
+        if screen is None:
+            return
+
+        screen_geometry = screen.availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        # 计算窗口需要在屏幕内的最小可见区域（至少显示 20 像素）
+        min_visible = 20
+
+        new_x = window_geometry.x()
+        new_y = window_geometry.y()
+
+        # 检查并修正 X 坐标
+        if window_geometry.right() < screen_geometry.left() + min_visible:
+            # 窗口在屏幕左边太远
+            new_x = screen_geometry.left()
+        elif window_geometry.left() > screen_geometry.right() - min_visible:
+            # 窗口在屏幕右边太远
+            new_x = screen_geometry.right() - window_geometry.width()
+
+        # 检查并修正 Y 坐标
+        if window_geometry.bottom() < screen_geometry.top() + min_visible:
+            # 窗口在屏幕上边太远
+            new_y = screen_geometry.top()
+        elif window_geometry.top() > screen_geometry.bottom() - min_visible:
+            # 窗口在屏幕下边太远
+            new_y = screen_geometry.bottom() - window_geometry.height()
+
+        if new_x != window_geometry.x() or new_y != window_geometry.y():
+            self.move(new_x, new_y)
+
+    def _quit_application(self) -> None:
+        """退出应用程序"""
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _position_window_top_right(self) -> None:
         """将窗口定位到屏幕右上角偏下一点"""
@@ -350,6 +494,8 @@ class MainWindow(QMainWindow):
         action_pause = menu.addAction("暂停/继续")
         action_stop = menu.addAction("结束本轮")
         menu.addSeparator()
+        action_reset_pos = menu.addAction("重置窗口位置")
+        menu.addSeparator()
         action_settings = menu.addAction("首选项...")
         action_stats = menu.addAction("查看统计")
         menu.addSeparator()
@@ -365,14 +511,14 @@ class MainWindow(QMainWindow):
             self._on_pause_triggered()
         elif selected == action_stop:
             self._on_stop_triggered()
+        elif selected == action_reset_pos:
+            self._reset_window_position()
         elif selected == action_settings:
             self.open_settings()
         elif selected == action_stats:
             self.open_stats()
         elif selected == action_quit:
-            app = QApplication.instance()
-            if app is not None:
-                app.quit()
+            self._quit_application()
 
     # ---------- 鼠标拖动窗口相关 ----------
 
@@ -395,6 +541,14 @@ class MainWindow(QMainWindow):
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # type: ignore[override]
         if event.button() == Qt.LeftButton:
             self._dragging = False
+            # 释放鼠标后，确保窗口在可见范围内
+            self._ensure_window_visible()
             event.accept()
         else:
             super().mouseReleaseEvent(event)
+
+    def closeEvent(self, event) -> None:
+        """关闭窗口时隐藏托盘图标"""
+        if hasattr(self, 'tray_icon'):
+            self.tray_icon.hide()
+        super().closeEvent(event)

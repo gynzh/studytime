@@ -55,4 +55,4 @@ cd "D:\桌面\typora文件\StudyTimer"
 git status                # 看看改了哪些文件
 git add 修改的文件 或 git add .
 git commit -m "说明本次改了什么"
-git push                  # 推到 GitHub
+git push -u origin main              # 推到 GitHub
